@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{브랜드명}} 퍼소나 분석</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<!--
+  사용법: {{ }} 자리를 채우고, 반복 블록(.persona, tr 등)은 필요한 만큼 복제한다.
+  자료가 없어 생략하는 모듈은 섹션을 지우지 말고 <div class="missing"> 박스만 남긴다.
+  추론·가정에는 <span class="badge hypo">가설</span>, 데이터 확인에는 <span class="badge data">데이터</span>.
+-->
+<style>
+:root{
+  --bg:#f7f7f5; --surface:#ffffff; --text:#1d1d1b; --muted:#6b6b66; --line:#e4e3de;
+  --accent:#2f5bea; --accent-soft:#e8eefd; --good:#1f8a55; --good-soft:#e3f4ea;
+  --warn:#b7791f; --warn-soft:#fbf1de; --bad:#c2412d; --bad-soft:#fbe7e3;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#151514; --surface:#1f1f1d; --text:#ecebe6; --muted:#a3a29c; --line:#34332f;
+    --accent:#7c9bff; --accent-soft:#232c48; --good:#5cc98e; --good-soft:#1d3327;
+    --warn:#e3b05a; --warn-soft:#3a2f1b; --bad:#ef7d68; --bad-soft:#3d221d;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#151514; --surface:#1f1f1d; --text:#ecebe6; --muted:#a3a29c; --line:#34332f;
+  --accent:#7c9bff; --accent-soft:#232c48; --good:#5cc98e; --good-soft:#1d3327;
+  --warn:#e3b05a; --warn-soft:#3a2f1b; --bad:#ef7d68; --bad-soft:#3d221d;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:"Noto Sans KR",system-ui,sans-serif;line-height:1.65;font-size:15px}
+.wrap{max-width:1040px;margin:0 auto;padding:40px 16px 80px}
+header h1{font-size:28px;margin:0 0 4px}
+header p{color:var(--muted);margin:0}
+nav{display:flex;flex-wrap:wrap;gap:8px;margin:24px 0 8px}
+nav a{font-size:13px;padding:4px 10px;border:1px solid var(--line);border-radius:999px;color:var(--muted);text-decoration:none}
+nav a:hover{color:var(--accent);border-color:var(--accent)}
+section{margin-top:48px}
+h2{font-size:21px;border-bottom:2px solid var(--text);padding-bottom:6px;margin-bottom:16px}
+h3{font-size:17px;margin:24px 0 8px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px}
+.summary{border-left:4px solid var(--accent)}
+.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.kpis{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin:16px 0}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px}
+.kpi b{display:block;font-size:22px}
+.kpi span{color:var(--muted);font-size:13px}
+.persona h3{margin-top:0}
+.persona .def{color:var(--muted);margin-top:-4px}
+.persona dl{display:grid;grid-template-columns:84px 1fr;gap:6px 12px;margin:12px 0}
+.persona dt{color:var(--muted);font-size:13px}
+.persona dd{margin:0}
+blockquote{margin:8px 0;padding:8px 12px;background:var(--bg);border-left:3px solid var(--line);font-size:14px}
+blockquote cite{display:block;color:var(--muted);font-size:12px;font-style:normal}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;background:var(--surface);font-size:14px}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:var(--bg);font-weight:500}
+.badge{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;font-weight:500;vertical-align:middle}
+.badge.data{background:var(--good-soft);color:var(--good)}
+.badge.hypo{background:var(--warn-soft);color:var(--warn)}
+.badge.break{background:var(--bad-soft);color:var(--bad)}
+.badge.ok{background:var(--good-soft);color:var(--good)}
+.bar{height:8px;background:var(--line);border-radius:4px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent)}
+.missing{border:1px dashed var(--warn);background:var(--warn-soft);border-radius:10px;padding:14px 16px;color:var(--text)}
+.missing b{color:var(--warn)}
+.priority{border:2px solid var(--accent)}
+.calc{font-family:ui-monospace,Consolas,monospace;font-size:13px;background:var(--bg);padding:8px 10px;border-radius:6px}
+footer{margin-top:64px;color:var(--muted);font-size:12px}
+@media print{nav{display:none} body{background:#fff}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>{{브랜드명}} 퍼소나 분석 보고서</h1>
+  <p>작성일 {{YYYY-MM-DD}} · 분석 자료: {{자료 요약, 예: 댓글 312건 / 주문 1,204건(2026.01–09) / 설문 58명}}</p>
+</header>
+
+<nav>
+  <a href="#summary">요약</a><a href="#method">자료·방법</a><a href="#a">A 댓글 퍼소나</a><a href="#b">B 충성고객</a>
+  <a href="#c">C 브랜드 접점</a><a href="#d">D 비충성 이유</a><a href="#e">E 매출 기회</a><a href="#appendix">부록</a>
+</nav>
+
+<!-- 1. 요약 -->
+<section id="summary">
+  <h2>요약</h2>
+  <div class="card summary">
+    <h3>우선 공략 퍼소나: {{퍼소나 별칭}}</h3>
+    <p>{{왜 이 퍼소나인지 2문장 + 예상 효과}}</p>
+    <h3>핵심 발견</h3>
+    <ol>
+      <li>{{발견 1 — 수치 포함}}</li>
+      <li>{{발견 2}}</li>
+      <li>{{발견 3}}</li>
+    </ol>
+  </div>
+  <div class="kpis">
+    <div class="kpi"><b>{{값}}</b><span>{{지표명, 예: 충성고객 매출 비중}}</span></div>
+    <div class="kpi"><b>{{값}}</b><span>{{지표명}}</span></div>
+    <div class="kpi"><b>{{값}}</b><span>{{지표명}}</span></div>
+    <div class="kpi"><b>{{값}}</b><span>{{지표명}}</span></div>
+  </div>
+</section>
+
+<!-- 2. 자료와 방법 -->
+<section id="method">
+  <h2>분석 자료와 방법</h2>
+  <div class="table-wrap"><table>
+    <tr><th>자료</th><th>규모·기간</th><th>사용한 모듈</th><th>비고</th></tr>
+    <tr><td>{{댓글·리뷰}}</td><td>{{n건, 기간, 제외 n건}}</td><td>A, D</td><td>{{}}</td></tr>
+  </table></div>
+  <h3>정의</h3>
+  <ul><li>충성고객: {{정의와 근거}}</li><li>재구매 주기: {{값}}</li></ul>
+  <h3>한계</h3>
+  <ul><li>{{예: 댓글 작성자는 전체 고객의 일부이며 만족·불만이 강한 쪽으로 치우침}}</li></ul>
+</section>
+
+<!-- 3. A -->
+<section id="a">
+  <h2>A. 댓글·리뷰 기반 퍼소나</h2>
+  <p>{{묶음 기준 한 줄}}</p>
+  <div class="grid">
+    <div class="card persona">
+      <h3>{{퍼소나 별칭}}</h3>
+      <p class="def">{{한 줄 정의}}</p>
+      <div class="bar"><i style="width:{{비중}}%"></i></div>
+      <p style="font-size:13px;color:var(--muted)">{{n건 / 전체 N건 중 xx%}} · 긍정 {{}}% · 부정 {{}}%</p>
+      <dl>
+        <dt>상황</dt><dd>{{}}</dd>
+        <dt>욕구</dt><dd>{{}}</dd>
+        <dt>장벽</dt><dd>{{}}</dd>
+        <dt>언어</dt><dd>{{"키워드", "키워드"}}</dd>
+        <dt>주요 접점</dt><dd>{{}}</dd>
+        <dt>공략 메시지</dt><dd>{{}}</dd>
+      </dl>
+      <blockquote>{{원문}}<cite>고객A · {{채널/별점}}</cite></blockquote>
+      <blockquote>{{원문}}<cite>고객B</cite></blockquote>
+    </div>
+  </div>
+</section>
+
+<!-- 4. B -->
+<section id="b">
+  <h2>B. 충성고객 퍼소나</h2>
+  <h3>세그먼트 분포</h3>
+  <div class="table-wrap"><table>
+    <tr><th>세그먼트</th><th>고객 수</th><th>비중</th><th>매출 비중</th><th>객단가</th><th>평균 주문 횟수</th></tr>
+    <tr><td>{{충성}}</td><td></td><td></td><td></td><td></td><td></td></tr>
+  </table></div>
+  <h3>충성고객 vs 나머지</h3>
+  <div class="table-wrap"><table>
+    <tr><th>항목</th><th>충성고객</th><th>나머지</th><th>해석</th></tr>
+    <tr><td>{{첫 구매 상품}}</td><td></td><td></td><td></td></tr>
+  </table></div>
+  <div class="grid" style="margin-top:16px">
+    <div class="card"><h3>진입 계기 (처음 끌린 이유)</h3><p>{{}}</p></div>
+    <div class="card"><h3>지속 이유 (계속 사는 이유)</h3><p>{{}}</p></div>
+  </div>
+  <!-- 퍼소나 카드(.persona)를 1~2개 추가 -->
+</section>
+
+<!-- 5. C -->
+<section id="c">
+  <h2>C. 브랜드 접점 지도</h2>
+  <div class="table-wrap"><table>
+    <tr><th>단계</th><th>주요 접점</th><th>{{퍼소나1}}</th><th>{{퍼소나2}}</th><th>상태</th><th>근거</th></tr>
+    <tr><td>인지</td><td>{{}}</td><td>●</td><td>○</td><td><span class="badge ok">원활</span></td><td>{{}}</td></tr>
+    <tr><td>탐색·비교</td><td></td><td></td><td></td><td><span class="badge break">끊김</span></td><td></td></tr>
+    <tr><td>구매</td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>사용</td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>재구매·추천</td><td></td><td></td><td></td><td></td><td></td></tr>
+  </table></div>
+  <p style="font-size:13px;color:var(--muted)">● 주로 사용 ◐ 일부 ○ 거의 없음</p>
+</section>
+
+<!-- 6. D -->
+<section id="d">
+  <h2>D. 비충성 고객 이유 분석</h2>
+  <div class="table-wrap"><table>
+    <tr><th>장벽</th><th>1회 구매 후 미재구매</th><th>재구매 중 이탈</th><th>관심 후 미구매</th><th>고칠 수 있나</th><th>우선순위</th></tr>
+    <tr><td>{{P 가격·가치}}</td><td>{{%}}</td><td></td><td></td><td>{{부분}}</td><td>{{1}}</td></tr>
+  </table></div>
+  <h3>원인별 해석과 대응</h3>
+  <div class="grid">
+    <div class="card"><h3>{{장벽명}}</h3><p>{{근거 + 원문}}</p><p><b>대응:</b> {{}}</p></div>
+  </div>
+</section>
+
+<!-- 7. E -->
+<section id="e">
+  <h2>E. 매출을 올려줄 퍼소나 & 실행안</h2>
+  <div class="table-wrap"><table>
+    <tr><th>후보</th><th>규모 (30%)</th><th>구매력 (25%)</th><th>전환 가능성 (30%)</th><th>도달 용이성 (15%)</th><th>기회 점수</th></tr>
+    <tr><td>{{}}</td><td>{{점수 · 근거}}</td><td></td><td></td><td></td><td><b>{{x.x}}</b></td></tr>
+  </table></div>
+
+  <div class="card priority" style="margin-top:20px">
+    <h3>우선 공략 ① {{퍼소나}} <span class="badge data">{{기존 강화 / 신규}}</span></h3>
+    <dl class="persona" style="display:grid;grid-template-columns:100px 1fr;gap:6px 12px">
+      <dt>선정 이유</dt><dd>{{}}</dd>
+      <dt>예상 효과</dt><dd><div class="calc">{{대상 n명 × 개선 가정 × 객단가 = 약 x원/월}}</div></dd>
+      <dt>핵심 메시지</dt><dd>{{}}</dd>
+      <dt>채널</dt><dd>{{}}</dd>
+      <dt>오퍼</dt><dd>{{}}</dd>
+      <dt>첫 2주</dt><dd><ol><li>{{}}</li></ol></dd>
+      <dt>KPI</dt><dd>{{}}</dd>
+    </dl>
+  </div>
+</section>
+
+<!-- 8. 부록 -->
+<section id="appendix">
+  <h2>부록</h2>
+  <h3>가설 목록과 검증 방법</h3>
+  <div class="table-wrap"><table>
+    <tr><th>가설</th><th>근거</th><th>검증 방법</th></tr>
+    <tr><td>{{}}</td><td></td><td>{{예: 1회 구매 고객 대상 3문항 설문}}</td></tr>
+  </table></div>
+  <!-- 자료가 없어 생략한 모듈 예시:
+  <div class="missing"><b>자료 필요</b> — 이 분석에는 주문 내역(고객ID·주문일·금액)이 필요해요. 받으면 충성고객 정의와 비교표를 채울 수 있습니다.</div>
+  -->
+</section>
+
+<footer>퍼소나 분석 · 수치는 제공된 자료 기준이며, <span class="badge hypo">가설</span> 표시는 추가 검증이 필요한 내용입니다.</footer>
+</div>
+</body>
+</html>
